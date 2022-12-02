@@ -1,16 +1,34 @@
+FROM golang:1.15.8-alpine as confd
+
+ARG CONFD_VERSION=0.18.0
+
+ADD https://github.com/abtreece/confd/archive/v${CONFD_VERSION}.tar.gz /tmp/
+
+RUN apk add --no-cache \
+    bzip2 \
+    make && \
+  mkdir -p /go/src/github.com/abtreece/confd && \
+  cd /go/src/github.com/abtreece/confd && \
+  tar --strip-components=1 -zxf /tmp/v${CONFD_VERSION}.tar.gz && \
+  go install github.com/abtreece/confd && \
+  rm -rf /tmp/v${CONFD_VERSION}.tar.gz
+
+FROM tomcat:8.5.15-jre8-alpine
+
+COPY --from=confd /go/bin/confd /usr/local/bin/confd
+
 FROM alpine
 
-LABEL maintainer="Giulio Calzolari <giuliocalzolari@users.noreply.github.com>" \
+LABEL maintainer="H Alipour" \
   org.label-schema.name="Squid" \
-  org.label-schema.description="AWS UTM Squid docker image based on Alpine Linux." \
+  org.label-schema.description="Squid docker image based on Alpine Linux." \
   org.label-schema.schema-version="1.0"
 
 # HEALTHCHECK --interval=30m --timeout=1s \
 #   CMD squidclient -h localhost cache_object://localhost/counters || exit 1
 
 # Install packages
-RUN echo "http://nl.alpinelinux.org/alpine/edge/testing/" >> /etc/apk/repositories && \
-    apk add --no-cache --update bash confd squid
+RUN apk add --no-cache --update bash squid
 
 # Redirect squid access logs to stdout
 RUN ln -sf /dev/stdout /var/log/squid/access.log
